@@ -100,138 +100,162 @@ async function mainStreaming() {
 }
 
 let my_webllm = {};
-	my_webllm['engine'] = null;
-	my_webllm['model'] = null;
-	
-	my_webllm['initProgressCallback'] = (report) => {
-       	console.log("WebLLM: init report: ", report);
-   	};
-	my_webllm['initCompleteCallback'] = () => {
-       	console.log("WebLLM: init complete");
-   	};
-	my_webllm['chunkCallback'] = (chunk, message_so_far, addition) => {
-		console.log("WebLLM: chunk callback: chunk,message_so_far,addition: ", chunk, message_so_far, addition);
-	}
-	my_webllm['completeCallback'] = (message) => {
-		console.log("WebLLM: complete callback: message: ", message);
-	}
-	my_webllm['statsCallback'] = (stats) => {
-		console.log("WebLLM: stats callback: stats: ", stats);
-	}
-	
-	
-	my_webllm['loadModel'] = async function(selectedModel) {
-		if(typeof selectedModel != 'string'){
-			if(typeof my_webllm.model == 'string'){
-				selectedModel = my_webllm.model;
-				console.log("WebLLM: loadModel: using cached model id: ", selectedModel);
-			}
-			else{
-				console.error("WebLLM: no valid model string provided");
-			}
-			
-		}
-		if(typeof selectedModel == 'string'){
-			my_webllm['engine'] = await _webLlm.CreateWebWorkerEngine(new Worker(require("b16cbe164a5b9742")), selectedModel, {
-		       initProgressCallback: my_webllm.initProgressCallback
-			});
-			my_webllm.initCompleteCallback();
-		}
-		else{
-			console.error("WebLLM: failed to start engine, no valid model provided?: ", selectedModel);
-		}
-	}
-	
-	my_webllm['reloadModel'] = async function(selectedModel) {
-		if(typeof selectedModel != 'string'){
-			if(typeof my_webllm.model == 'string'){
-				selectedModel = my_webllm.model;
-				console.log("WebLLM: reloadModel: using cached model id: ", selectedModel);
-			}
-			else{
-				console.error("WebLLM: reloadModel: no valid model string provided");
-			}
-			
-		}
-		if(typeof selectedModel == 'string' && my_webllm.engine != null){
-			await my_webllm.engine.reload(selectedModel);
-		}
-	}
+my_webllm['engine'] = null;
+my_webllm['model'] = null;
 
+my_webllm['initProgressCallback'] = (report) => {
+console.log("WebLLM: init report: ", report);
+};
+my_webllm['initCompleteCallback'] = () => {
+console.log("WebLLM: init complete");
+};
+my_webllm['chunkCallback'] = (chunk, message_so_far, addition) => {
+	console.log("WebLLM: chunk callback: chunk,message_so_far,addition: ", chunk, message_so_far, addition);
+}
+my_webllm['completeCallback'] = (message) => {
+	console.log("WebLLM: complete callback: message: ", message);
+}
+my_webllm['statsCallback'] = (stats) => {
+	console.log("WebLLM: stats callback: stats: ", stats);
+}
+
+
+my_webllm['loadModel'] = async function(selectedModel) {
+	if(typeof selectedModel != 'string'){
+		if(typeof my_webllm.model == 'string'){
+			selectedModel = my_webllm.model;
+			console.log("WebLLM: loadModel: using cached model id: ", selectedModel);
+		}
+		else{
+			console.error("WebLLM: no valid model string provided");
+		}
 		
-	my_webllm['setInitProgressCallback'] = async function(initProgressCallback) {
-		if(typeof initProgressCallback === 'function'){
-			my_webllm['initProgressCallback'] = initProgressCallback;
+	}
+	if(typeof selectedModel == 'string'){
+		my_webllm.model = selectedModel;
+		my_webllm['engine'] = await _webLlm.CreateWebWorkerEngine(new Worker(require("b16cbe164a5b9742")), selectedModel, {
+	       initProgressCallback: my_webllm.initProgressCallback
+		});
+		my_webllm.initCompleteCallback();
+	}
+	else{
+		console.error("WebLLM: failed to start engine, no valid model provided?: ", selectedModel);
+	}
+}
+
+my_webllm['reloadModel'] = async function(selectedModel, init_progress_callback) {
+	if(typeof selectedModel != 'string'){
+		if(typeof my_webllm.model == 'string'){
+			selectedModel = my_webllm.model;
+			console.log("WebLLM: reloadModel: using cached model id: ", selectedModel);
 		}
 		else{
-			console.error("WebLLM: no valid initProgressCallback provided");
+			console.error("WebLLM: reloadModel: no valid model string provided");
 		}
+		
 	}
-	my_webllm['setInitCompleteCallback'] = async function(initCompleteCallback) {
-		if(typeof initCompleteCallback === 'function'){
-			my_webllm['initCompleteCallback'] = initCompleteCallback;
-		}
-		else{
-			console.error("WebLLM: no valid initCompleteCallback provided");
-		}
+	if(typeof selectedModel == 'string' && my_webllm.engine != null){
+		console.log("WebLLM: reloading!  selectedModel,typeof init_progress_callback: ", selectedModel, typeof init_progress_callback);
+		await my_webllm.engine.reload(selectedModel, {
+			initProgressCallback: my_webllm.initProgressCallback
+		});
+		my_webllm.initCompleteCallback();
 	}
-	my_webllm['setChunkCallback'] = async function(chunkCallback) {
-		if(typeof chunkCallback === 'function'){
-			my_webllm['chunkCallback'] = chunkCallback;
-		}
-		else{
-			console.error("WebLLM: no valid chunkCallback provided");
-		}
+}
+
+my_webllm['unloadModel'] = async function() {
+	if(my_webllm.engine != null){
+		console.log("WebLLM: unloading!");
+		await my_webllm.engine.unload();
+		my_webllm.model = null;
+		my_webllm.engine = null;
 	}
-	my_webllm['setCompleteCallback'] = async function(completeCallback) {
-		if(typeof completeCallback === 'function'){
-			my_webllm['completeCallback'] = completeCallback;
-		}
-		else{
-			console.error("WebLLM: no valid completeCallback provided");
-		}
+	else{
+		console.error("WebLLM: my_webllm.engine was already null");
 	}
-	my_webllm['setStatsCallback'] = async function(statsCallback) {
-		if(typeof statsCallback === 'function'){
-			my_webllm['statsCallback'] = statsCallback;
-		}
-		else{
-			console.error("WebLLM: no valid statsCallback provided");
-		}
-	}
+}
+
 	
-	
-	my_webllm['doChat'] = async function(request) {
-		if(my_webllm.engine == null){
-			console.error("WebLLM: aborting, engine has not been started yet");
-			return false
-		}
-		if(typeof request != 'undefined' && request != null && typeof request.messages != 'undefined'){
-		    const asyncChunkGenerator = await my_webllm.engine.chat.completions.create(request);
-		    let message = "";
-		    for await (const chunk of asyncChunkGenerator){
-		        //console.log("WebLLM: doChat: chunk: ", chunk);
-		        if (chunk.choices[0].delta.content) // Last chunk has undefined content
-		        message += chunk.choices[0].delta.content;
-				    my_webllm['chunkCallback'](chunk, message, chunk.choices[0].delta.content);
-		        setLabel("generate-label", message);
-		    // engine.interruptGenerate();  // works with interrupt as well
-		    }
-			
-			const final_message = await my_webllm.engine.getMessage();
-			my_webllm.completeCallback(final_message);
-		    console.log("WebLLM: Final message:\n", final_message); // the concatenated message]
-			
-			let stats = await my_webllm.engine.runtimeStatsText();
-			my_webllm['statsCallback'](stats);
-		    //console.log("WebLLM: stats: ", stats);
-		}
-		else{
-			console.error("WebLLM: no valid prompt message provided");
-		}
+my_webllm['setInitProgressCallback'] = async function(initProgressCallback) {
+	if(typeof initProgressCallback === 'function'){
+		my_webllm['initProgressCallback'] = initProgressCallback;
 	}
-	window.my_webllm = my_webllm;
-	console.log("You can now use window.my_webllm: ", window.my_webllm);
+	else{
+		console.error("WebLLM: no valid initProgressCallback provided");
+	}
+}
+my_webllm['setInitCompleteCallback'] = async function(initCompleteCallback) {
+	if(typeof initCompleteCallback === 'function'){
+		my_webllm['initCompleteCallback'] = initCompleteCallback;
+	}
+	else{
+		console.error("WebLLM: no valid initCompleteCallback provided");
+	}
+}
+my_webllm['setChunkCallback'] = async function(chunkCallback) {
+	if(typeof chunkCallback === 'function'){
+		my_webllm['chunkCallback'] = chunkCallback;
+	}
+	else{
+		console.error("WebLLM: no valid chunkCallback provided");
+	}
+}
+my_webllm['setCompleteCallback'] = async function(completeCallback) {
+	if(typeof completeCallback === 'function'){
+		my_webllm['completeCallback'] = completeCallback;
+	}
+	else{
+		console.error("WebLLM: no valid completeCallback provided");
+	}
+}
+my_webllm['setStatsCallback'] = async function(statsCallback) {
+	if(typeof statsCallback === 'function'){
+		my_webllm['statsCallback'] = statsCallback;
+	}
+	else{
+		console.error("WebLLM: no valid statsCallback provided");
+	}
+}
+
+
+my_webllm['interrupt'] = async function() {
+	if(my_webllm.engine){
+		console.log("calling interruptGenerate");
+		my_webllm.engine.interruptGenerate();
+	}
+}
+
+my_webllm['doChat'] = async function(request) {
+	if(my_webllm.engine == null){
+		console.error("WebLLM: aborting, engine has not been started yet");
+		return false
+	}
+	if(typeof request != 'undefined' && request != null && typeof request.messages != 'undefined'){
+	    const asyncChunkGenerator = await my_webllm.engine.chat.completions.create(request);
+	    let message = "";
+	    for await (const chunk of asyncChunkGenerator){
+		//console.log("WebLLM: doChat: chunk: ", chunk);
+		if (chunk.choices[0].delta.content) // Last chunk has undefined content
+		message += chunk.choices[0].delta.content;
+			my_webllm['chunkCallback'](chunk, message, chunk.choices[0].delta.content);
+		setLabel("generate-label", message);
+	    // engine.interruptGenerate();  // works with interrupt as well
+	    }
+		
+		const final_message = await my_webllm.engine.getMessage();
+		my_webllm.completeCallback(final_message);
+	    console.log("WebLLM: Final message:\n", final_message); // the concatenated message]
+		
+		let stats = await my_webllm.engine.runtimeStatsText();
+		my_webllm['statsCallback'](stats);
+	    //console.log("WebLLM: stats: ", stats);
+	}
+	else{
+		console.error("WebLLM: no valid prompt message provided");
+	}
+}
+window.my_webllm = my_webllm;
+console.log("You can now use window.my_webllm: ", window.my_webllm);
 
 
 // Run one of the function below
